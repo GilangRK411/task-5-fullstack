@@ -27,27 +27,42 @@ class CategoryController extends Controller
 
     public function store(StoreCategoryRequest $request)
     {
-        Category::create($request->validated());
-        return redirect()->route('categories.index')->with('success', 'Category created successfully!');
-    }
+        Category::create([
+            'name' => $request->name,
+            'user_id' => auth()->id(), // Set user_id dari user yang login
+        ]);
 
-    public function edit(Category $category)
-    {
-        return view('categories.edit', compact('category'));
+        return redirect()->route('categories.index')->with('success', 'Category created successfully!');
     }
 
     public function update(UpdateCategoryRequest $request, Category $category)
     {
-        $category->update($request->validated());
+        if ($category->user_id !== auth()->id()) {
+            return back()->with('error', 'Unauthorized to edit this category!');
+        }
+
+        $category->update(['name' => $request->name]);
+
         return redirect()->route('categories.index')->with('success', 'Category updated successfully!');
     }
 
     public function destroy(Category $category)
     {
+        if ($category->user_id !== auth()->id()) {
+            return back()->with('error', 'Unauthorized to delete this category!');
+        }
+
         if ($category->articles()->exists()) {
             return back()->with('error', 'Cannot delete category with articles!');
         }
+
         $category->delete();
         return redirect()->route('categories.index')->with('success', 'Category deleted successfully!');
+    }
+
+
+    public function edit(Category $category)
+    {
+        return view('categories.edit', compact('category'));
     }
 }

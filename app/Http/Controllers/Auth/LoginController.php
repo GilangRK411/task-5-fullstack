@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Auth;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Hash;
 
 class LoginController extends Controller
 {
@@ -29,8 +30,20 @@ class LoginController extends Controller
             return redirect()->route('articles.index');
         }
 
-        return back()->withErrors(['email' => 'Invalid credentials']);
+        // Debugging untuk melihat apakah user ditemukan
+        $user = \App\Models\User::where('email', $request->email)->first();
+        if (!$user) {
+            return back()->withErrors(['email' => 'Email tidak ditemukan']);
+        }
+
+        // Debugging untuk memastikan password cocok
+        if (!Hash::check($request->password, $user->password)) {
+            return back()->withErrors(['password' => 'Password salah']);
+        }
+
+        return back()->withErrors(['email' => 'Login gagal karena alasan tidak diketahui']);
     }
+
 
     public function logout()
     {
