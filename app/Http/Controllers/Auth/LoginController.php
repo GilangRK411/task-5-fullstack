@@ -6,6 +6,8 @@ use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
+use Tymon\JWTAuth\Facades\JWTAuth;
+use App\Models\Token; // Tambahkan model untuk menyimpan token
 
 class LoginController extends Controller
 {
@@ -26,28 +28,38 @@ class LoginController extends Controller
             'password' => 'required',
         ]);
 
-        if (Auth::attempt($credentials)) {
-            return redirect()->route('articles.index');
+        if (!$token = JWTAuth::attempt($credentials)) {
+            return response()->json(['message' => 'Email atau password salah'], 401);
         }
 
-        // Debugging untuk melihat apakah user ditemukan
-        $user = \App\Models\User::where('email', $request->email)->first();
-        if (!$user) {
-            return back()->withErrors(['email' => 'Email tidak ditemukan']);
-        }
+        $user = Auth::user();
 
-        // Debugging untuk memastikan password cocok
-        if (!Hash::check($request->password, $user->password)) {
-            return back()->withErrors(['password' => 'Password salah']);
-        }
+        // Simpan token ke database
+        Token::create([
+            'user_id' => $user->id,
+            'token' => $token
+        ]);
 
-        return back()->withErrors(['email' => 'Login gagal karena alasan tidak diketahui']);
+        return response()->json([
+            'message' => 'Login berhasil',
+            'access_token' => $token,
+            'token_type' => 'bearer',
+            'expires_in' => auth()->factory()->getTTL() * 60
+        ]);
     }
-
 
     public function logout()
     {
-        Auth::logout();
-        return redirect('/');
+        $user = Auth::user();
+
+        // Hapus token dari database
+        Token::where('user_id', $user->id)->delete();
+
+        // Invalidate JWT token
+        JWTAuth::invalidate(JWTAuth::getToken());
+
+        return response()->json(['message' => 'Successfully logged out']);
     }
+
 }
+

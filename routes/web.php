@@ -6,7 +6,6 @@ use App\Http\Controllers\ArticleController;
 use Illuminate\Support\Facades\Auth;
 use App\Http\Controllers\DashboardController;
 
-
 // Authentication Routes
 Auth::routes();
 
@@ -24,14 +23,7 @@ Route::middleware(['auth'])->group(function () {
 // Home Route
 Route::get('/home', [App\Http\Controllers\HomeController::class, 'index'])->name('dashboard');
 
-
-Route::middleware(['auth'])->group(function () {
-    Route::get('/admin/dashboard', [DashboardController::class, 'index'])
-        ->middleware('admin')
-        ->name('admin.dashboard');
-});
-
-
-Route::middleware(['auth'])->group(function () {
+// Admin Dashboard Route with Auth & Admin Middleware
+Route::middleware(['auth', 'admin'])->group(function () {
     Route::get('/admin/dashboard', [DashboardController::class, 'index'])->name('admin.dashboard');
 });
