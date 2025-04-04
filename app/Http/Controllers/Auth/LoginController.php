@@ -6,18 +6,14 @@ use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Tymon\JWTAuth\Facades\JWTAuth;
-use App\Models\Token; // Add model for storing tokens
+use Tymon\JWTAuth\Exceptions\JWTException;
+use App\Models\Token;
 
 class LoginController extends Controller
 {
     public function __construct()
     {
         $this->middleware('guest')->except('logout');
-    }
-
-    public function showLoginForm()
-    {
-        return view('auth.login');
     }
 
     public function login(Request $request)
@@ -27,47 +23,64 @@ class LoginController extends Controller
             'password' => 'required',
         ]);
 
-        if (Auth::attempt($credentials)) {
-            return redirect()->route('articles.index');
-        }
-
         if (!$token = JWTAuth::attempt($credentials)) {
-            return response()->json(['message' => 'Email or password is incorrect'], 401);
+            return response()->json(['message' => 'Email atau password salah'], 401);
         }
 
         $user = Auth::user();
 
+        // Simpan token baru tanpa menghapus token lama
         Token::create([
             'user_id' => $user->id,
-            'token' => $token,
+            'token' => $token
         ]);
 
-        $cookie = cookie('token', $token, 60); // Token disimpan dalam cookie selama 60 menit
+        return response()->json([
+            'message' => 'Login berhasil',
+            'access_token' => $token,
+            'token_type' => 'bearer',
+            'expires_in' => auth()->factory()->getTTL() * 60
+        ]);
+    }
 
 
-        if ($request->expectsJson()) {
+
+    public function refresh()
+    {
+        try {
+            $newToken = JWTAuth::refresh(JWTAuth::getToken()); // Buat token baru dari refresh token
             return response()->json([
-                'message' => 'Login berhasil',
-                'access_token' => $token,
+                'message' => 'Token berhasil diperbarui',
+                'access_token' => $newToken,
                 'token_type' => 'bearer',
                 'expires_in' => auth()->factory()->getTTL() * 60
-            ])->withCookie($cookie); // Mengirim token dalam cookie
-            } else {
-                // Jika bukan request API, redirect ke halaman utama
-                return redirect()->route('articles.index')->withCookie($cookie);
+            ]);
+        } catch (\Exception $e) {
+            return response()->json(['message' => 'Gagal memperbarui token'], 401);
         }
     }
 
-    public function logout()
+    public function logout(Request $request)
     {
-        $user = Auth::user();
+        try {
+            $token = JWTAuth::getToken();
+            if (!$token) {
+                return response()->json(['message' => 'Token tidak ditemukan'], 400);
+            }
 
-        Token::where('user_id', $user->id)->delete();
+            // Autentikasi user dari token
+            $user = JWTAuth::authenticate($token);
 
-        JWTAuth::invalidate(JWTAuth::getToken());
+            // Hapus semua token user dari database
+            Token::where('user_id', $user->id)->delete();
 
-        $cookie = cookie('token', '', -1);
+            // Invalidate token yang digunakan
+            JWTAuth::invalidate($token);
 
-        return response()->json(['message' => 'Successfully logged out'])->withCookie($cookie);
+            return response()->json(['message' => 'Logout berhasil, semua sesi telah ditutup']);
+        } catch (JWTException $e) {
+            return response()->json(['message' => 'Tidak dapat logout, token mungkin sudah kadaluarsa'], 500);
+        }
     }
+
 }

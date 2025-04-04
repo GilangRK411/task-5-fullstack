@@ -8,25 +8,25 @@ use App\Http\Controllers\CategoryController;
 use App\Http\Controllers\DashboardController;
 use Illuminate\Support\Facades\Auth;
 
+// Redirect '/' ke dashboard jika login, jika tidak maka ke login
 Route::get('/', function () {
-    return auth()->check() ? redirect()->route('articles.index') : redirect()->route('login');
+    return auth()->check() ? redirect()->route('home') : redirect()->route('login');
 })->name('home');
 
-Auth::routes(); // Menambahkan route auth untuk login, register, dan logout.
+// Menyediakan route login, register, logout (bawaan Laravel)
+Auth::routes();
 
+// Middleware untuk user yang sudah login
 Route::middleware(['auth'])->group(function () {
     Route::resource('categories', CategoryController::class);
     Route::resource('articles', ArticleController::class);
+
+    // Dashboard user
+    Route::get('/home', [App\Http\Controllers\HomeController::class, 'index'])->name('home');
 });
 
-// Menampilkan halaman login
-Route::get('login', [LoginController::class, 'showLoginForm'])->name('login');
-
-// Halaman dashboard user
-Route::get('/home', [App\Http\Controllers\HomeController::class, 'index'])->name('dashboard');
-
-// Admin Dashboard Route
-Route::middleware(['auth', 'admin'])->group(function () {
+// Middleware khusus admin
+Route::middleware(['admin'])->group(function () {
     Route::get('/admin/dashboard', [DashboardController::class, 'index'])->name('admin.dashboard');
 });
 

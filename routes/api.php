@@ -6,13 +6,13 @@ use App\Http\Controllers\Auth\RegisterController;
 use App\Http\Controllers\ArticleController;
 use App\Http\Controllers\CategoryController;
 
-// API login dan register
+// Rute untuk register dan login
 Route::post('register', [RegisterController::class, 'register']);
-Route::post('login', [LoginController::class, 'login']);
+Route::post('login', [LoginController::class, 'login']); // Rute login hanya untuk API
 
-// API routes yang memerlukan otentikasi menggunakan JWT
-Route::middleware(['auth:api', 'verify.token.cookie'])->group(function () {
-    Route::post('logout', [LoginController::class, 'logout']);
-    Route::apiResource('articles', ArticleController::class);
-    Route::apiResource('categories', CategoryController::class);
+// Middleware untuk autentikasi dan validasi token
+Route::middleware(['auth:api', 'verify.token'])->group(function () {
+    Route::post('logout', [LoginController::class, 'logout']); // Logout API route
+    Route::apiResource('articles', ArticleController::class);  // Resource articles
+    Route::apiResource('categories', CategoryController::class); // Resource categories
 });
